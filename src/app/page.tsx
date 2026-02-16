@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Sidebar from "@/components/dashboard/Sidebar"
 import AgentStatusCards from "@/components/agents/AgentStatusCards"
 import KanbanBoard from "@/components/kanban/KanbanBoard"
@@ -13,11 +13,43 @@ import SessionInspector from "@/components/dashboard/SessionInspector"
 import AgentConfigPanel from "@/components/dashboard/AgentConfigPanel"
 import CommandPalette from "@/components/dashboard/CommandPalette"
 import { mockAgents, mockCommMessages, mockMetrics } from "@/lib/mock-data"
+import { api } from "@/lib/api"
+import { Agent } from "@/lib/types"
 import { Search } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 
 export default function Home() {
   const [activeView, setActiveView] = useState("overview")
+  const [agents, setAgents] = useState<Agent[]>(mockAgents)
+
+  const fetchAgents = useCallback(async () => {
+    try {
+      const data = await api.agents.list()
+      const mapped: Agent[] = data.map((a: Record<string, unknown>) => ({
+        id: a.id as string,
+        name: a.name as string || a.id as string,
+        emoji: a.emoji as string || '🤖',
+        status: (a.status as Agent['status']) || 'idle',
+        model: a.model as string || 'unknown',
+        workspace: '',
+        tools: [],
+        uptime: '',
+        tokenUsage: 0,
+        tokenLimit: 1000000,
+        sessionCount: (a.sessionCount as number) || 0,
+        currentTask: a.currentTask as string | undefined,
+      }))
+      if (mapped.length > 0) setAgents(mapped)
+    } catch {
+      // Fall back to mock data silently
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchAgents()
+    const interval = setInterval(fetchAgents, 15000)
+    return () => clearInterval(interval)
+  }, [fetchAgents])
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -61,7 +93,7 @@ export default function Home() {
         <div className="p-6">
           {activeView === "overview" && (
             <div className="space-y-6">
-              <AgentStatusCards agents={mockAgents} />
+              <AgentStatusCards agents={agents} />
               <div className="grid grid-cols-3 gap-6">
                 <div className="col-span-2">
                   <KanbanBoard />
@@ -82,8 +114,8 @@ export default function Home() {
 
           {activeView === "agents" && (
             <div className="space-y-6">
-              <AgentStatusCards agents={mockAgents} />
-              <SessionInspector agents={mockAgents} />
+              <AgentStatusCards agents={agents} />
+              <SessionInspector agents={agents} />
             </div>
           )}
 
@@ -97,7 +129,7 @@ export default function Home() {
 
           {activeView === "metrics" && <MetricsChart data={mockMetrics} />}
 
-          {activeView === "settings" && <AgentConfigPanel agents={mockAgents} />}
+          {activeView === "settings" && <AgentConfigPanel agents={agents} />}
         </div>
       </main>
     </div>

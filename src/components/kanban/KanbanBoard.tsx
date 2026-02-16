@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { TaskColumn, TaskPriority } from "@/lib/types"
 import { api, DBTask } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { Clock, GripVertical, Plus, X, Trash2, Save, Loader2 } from "lucide-react"
+import { Clock, GripVertical, Plus, X, Trash2, Save, Loader2, Play, ScrollText } from "lucide-react"
 
 const columns: { id: TaskColumn; label: string; color: string }[] = [
   { id: "backlog", label: "Backlog", color: "text-muted-foreground" },
@@ -31,7 +31,7 @@ function formatRelative(iso: string) {
   return `${d}d ago`
 }
 
-function TaskCard({ task, onExpand, onMove }: { task: DBTask; onExpand: (t: DBTask) => void; onMove: (id: string, status: string) => void }) {
+function TaskCard({ task, onExpand, onMove, onDispatch }: { task: DBTask; onExpand: (t: DBTask) => void; onMove: (id: string, status: string) => void; onDispatch?: (id: string) => void }) {
   const priority = priorityConfig[task.priority]
   const colIdx = columns.findIndex(c => c.id === task.status)
 
@@ -65,6 +65,21 @@ function TaskCard({ task, onExpand, onMove }: { task: DBTask; onExpand: (t: DBTa
           >{columns[colIdx + 1].label} →</button>
         )}
       </div>
+      {task.status === 'backlog' && onDispatch && (
+        <div className="mt-2">
+          <button
+            onClick={e => { e.stopPropagation(); onDispatch(task.id) }}
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
+          >
+            <Play className="w-3 h-3" /> Dispatch
+          </button>
+        </div>
+      )}
+      {task.status === 'in-progress' && task.session_key && (
+        <div className="mt-2 flex items-center gap-1 text-[10px] text-primary">
+          <Loader2 className="w-3 h-3 animate-spin" /> Agent working...
+        </div>
+      )}
       <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
         <Clock className="w-3 h-3" />
         {formatRelative(task.updated_at)}
@@ -158,6 +173,9 @@ function TaskDetail({ task, onClose, onUpdate, onDelete }: { task: DBTask; onClo
   const [agent, setAgent] = useState(task.assigned_agent || "")
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [activeTab, setActiveTab] = useState<'details' | 'session'>('details')
+  const [sessionLog, setSessionLog] = useState<Array<{ role: string; content: string }> | null>(null)
+  const [loadingSession, setLoadingSession] = useState(false)
 
   const save = async () => {
     setSaving(true)
@@ -182,6 +200,16 @@ function TaskDetail({ task, onClose, onUpdate, onDelete }: { task: DBTask; onClo
     finally { setDeleting(false) }
   }
 
+  const loadSession = async () => {
+    if (sessionLog || !task.session_key) return
+    setLoadingSession(true)
+    try {
+      const data = await api.tasks.session(task.id)
+      setSessionLog(data.messages)
+    } catch { setSessionLog([]) }
+    finally { setLoadingSession(false) }
+  }
+
   const parsedTags: string[] = (() => { try { return JSON.parse(task.tags || '[]') } catch { return [] } })()
 
   return (
@@ -200,6 +228,30 @@ function TaskDetail({ task, onClose, onUpdate, onDelete }: { task: DBTask; onClo
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
           </div>
         </div>
+        {task.session_key && (
+          <div className="flex border-b border-border">
+            <button onClick={() => setActiveTab('details')} className={cn("px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors", activeTab === 'details' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}>Details</button>
+            <button onClick={() => { setActiveTab('session'); loadSession() }} className={cn("flex items-center gap-1 px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors", activeTab === 'session' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}><ScrollText className="w-3 h-3" /> Session Log</button>
+          </div>
+        )}
+        {activeTab === 'session' && task.session_key ? (
+          <div className="p-4 max-h-96 overflow-y-auto">
+            {loadingSession ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : sessionLog && sessionLog.length > 0 ? (
+              <div className="space-y-3">
+                {sessionLog.map((msg, i) => (
+                  <div key={i} className={cn("text-xs rounded p-3", msg.role === 'assistant' ? 'bg-primary/5 border border-primary/10' : 'bg-muted')}>
+                    <div className="font-medium text-muted-foreground mb-1 uppercase text-[10px]">{msg.role}</div>
+                    <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{typeof msg.content === 'string' ? msg.content.slice(0, 3000) : JSON.stringify(msg.content).slice(0, 3000)}</pre>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-8">No session messages found</p>
+            )}
+          </div>
+        ) : (
         <div className="p-4 space-y-4">
           <div className="flex gap-2 flex-wrap">
             {editing ? (
@@ -243,6 +295,7 @@ function TaskDetail({ task, onClose, onUpdate, onDelete }: { task: DBTask; onClo
             </div>
           )}
         </div>
+        )}
         <div className="p-4 border-t border-border flex justify-between items-center">
           <span className="text-[10px] text-muted-foreground">Created {formatRelative(task.created_at)}</span>
           <button onClick={handleDelete} disabled={deleting} className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded">
@@ -259,6 +312,39 @@ export default function KanbanBoard() {
   const [loading, setLoading] = useState(true)
   const [expandedTask, setExpandedTask] = useState<DBTask | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [dispatching, setDispatching] = useState<string | null>(null)
+
+  const syncTasks = useCallback(async () => {
+    try {
+      const result = await api.tasks.sync()
+      if (result.updated.length > 0) {
+        // Refresh tasks if any were updated
+        const data = await api.tasks.list()
+        setTasks(data)
+      }
+    } catch (e) {
+      console.error('Sync failed:', e)
+    }
+  }, [])
+
+  // Auto-sync every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(syncTasks, 15000)
+    return () => clearInterval(interval)
+  }, [syncTasks])
+
+  const handleDispatch = async (id: string) => {
+    setDispatching(id)
+    try {
+      const result = await api.tasks.dispatch(id)
+      setTasks(prev => prev.map(t => t.id === id ? result.task : t))
+    } catch (e) {
+      console.error('Dispatch failed:', e)
+      alert(`Dispatch failed: ${e instanceof Error ? e.message : e}`)
+    } finally {
+      setDispatching(null)
+    }
+  }
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -324,7 +410,7 @@ export default function KanbanBoard() {
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto pr-1">
                 {colTasks.map(task => (
-                  <TaskCard key={task.id} task={task} onExpand={setExpandedTask} onMove={handleMove} />
+                  <TaskCard key={task.id} task={task} onExpand={setExpandedTask} onMove={handleMove} onDispatch={col.id === 'backlog' ? handleDispatch : undefined} />
                 ))}
               </div>
             </div>

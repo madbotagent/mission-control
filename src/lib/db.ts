@@ -28,7 +28,9 @@ export function getDb(): Database.Database {
       completed_at TEXT,
       position INTEGER DEFAULT 0,
       tags TEXT DEFAULT '[]',
-      output TEXT
+      output TEXT,
+      run_id TEXT,
+      session_key TEXT
     );
 
     CREATE TABLE IF NOT EXISTS activity_log (
@@ -58,6 +60,14 @@ export function getDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
     CREATE INDEX IF NOT EXISTS idx_hitl_status ON hitl_requests(status);
   `);
+
+  // Migrate existing DBs: add run_id and session_key if missing
+  try {
+    _db.exec(`ALTER TABLE tasks ADD COLUMN run_id TEXT`);
+  } catch { /* column already exists */ }
+  try {
+    _db.exec(`ALTER TABLE tasks ADD COLUMN session_key TEXT`);
+  } catch { /* column already exists */ }
 
   return _db;
 }

@@ -1,0 +1,104 @@
+const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'http://127.0.0.1:18789';
+const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
+
+interface InvokeResult {
+  status: string;
+  result?: unknown;
+  error?: string;
+}
+
+async function invoke(tool: string, args: Record<string, unknown>): Promise<unknown> {
+  const res = await fetch(`${GATEWAY_URL}/tools/invoke`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GATEWAY_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tool, args, sessionKey: 'main' }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`OpenClaw Gateway error ${res.status}: ${text}`);
+  }
+
+  const data: InvokeResult = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.result ?? data;
+}
+
+export interface SpawnResult {
+  status: string;
+  childSessionKey: string;
+  runId: string;
+}
+
+export async function spawnAgent(opts: {
+  task: string;
+  agentId?: string;
+  label?: string;
+  model?: string;
+}): Promise<SpawnResult> {
+  const result = await invoke('sessions_spawn', {
+    task: opts.task,
+    agentId: opts.agentId || 'coder',
+    label: opts.label || 'Mission Control Task',
+    model: opts.model || 'anthropic/claude-opus-4-6',
+    thinking: 'low',
+  });
+  return result as SpawnResult;
+}
+
+export interface SessionInfo {
+  sessionKey: string;
+  label?: string;
+  agentId?: string;
+  status?: string;
+  state?: string;
+  createdAt?: string;
+  lastMessage?: unknown;
+  [key: string]: unknown;
+}
+
+export async function listSessions(): Promise<SessionInfo[]> {
+  const result = await invoke('sessions_list', {
+    kinds: ['subagent'],
+    messageLimit: 1,
+  });
+  // Result could be { sessions: [...] } or just an array
+  if (Array.isArray(result)) return result;
+  const obj = result as Record<string, unknown>;
+  if (Array.isArray(obj.sessions)) return obj.sessions as SessionInfo[];
+  return [];
+}
+
+export interface HistoryMessage {
+  role: string;
+  content: string;
+  timestamp?: string;
+}
+
+export async function getSessionHistory(sessionKey: string, limit = 20): Promise<HistoryMessage[]> {
+  const result = await invoke('sessions_history', {
+    sessionKey,
+    limit,
+  });
+  if (Array.isArray(result)) return result as HistoryMessage[];
+  const obj = result as Record<string, unknown>;
+  if (Array.isArray(obj.messages)) return obj.messages as HistoryMessage[];
+  return [];
+}
+
+export interface AgentInfo {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+export async function listAgents(): Promise<AgentInfo[]> {
+  const result = await invoke('agents_list', {});
+  if (Array.isArray(result)) return result as AgentInfo[];
+  const obj = result as Record<string, unknown>;
+  if (Array.isArray(obj.agents)) return obj.agents as AgentInfo[];
+  return [];
+}

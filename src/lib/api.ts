@@ -26,6 +26,8 @@ export interface DBTask {
   position: number
   tags: string // JSON array
   output: string | null
+  run_id: string | null
+  session_key: string | null
 }
 
 export interface DBActivity {
@@ -61,6 +63,15 @@ export const api = {
     delete: (id: string) => request<{ success: boolean }>(`/tasks/${id}`, { method: 'DELETE' }),
     move: (id: string, status: string, position?: number) =>
       request<DBTask>(`/tasks/${id}/move`, { method: 'PATCH', body: JSON.stringify({ status, position }) }),
+    dispatch: (id: string, agentId?: string) =>
+      request<{ task: DBTask; session: { childSessionKey: string; runId: string } }>(`/tasks/${id}/dispatch`, { method: 'POST', body: JSON.stringify({ agentId }) }),
+    sync: () =>
+      request<{ synced: number; updated: string[] }>('/tasks/sync', { method: 'POST' }),
+    session: (id: string) =>
+      request<{ sessionKey: string; messages: Array<{ role: string; content: string; timestamp?: string }> }>(`/tasks/${id}/session`),
+  },
+  agents: {
+    list: () => request<Array<Record<string, unknown>>>('/agents'),
   },
   activity: {
     list: (limit?: number, taskId?: string) => {
