@@ -31,11 +31,31 @@ export async function POST() {
     const sessionKey = task.session_key as string;
     const session = sessionMap.get(sessionKey);
 
-    // If session not found in active list, it may have completed
-    // Try to get history to check for completion
-    if (!session || session.state === 'ended' || session.state === 'completed' || session.status === 'ended' || session.status === 'completed') {
+    // Check if the session is explicitly done
+    const isEnded = session && (
+      session.state === 'ended' || session.state === 'completed' || 
+      session.status === 'ended' || session.status === 'completed' ||
+      session.state === 'archived'
+    );
+
+    // If session not in active list, it might be done OR still starting up
+    // Only mark done if: session explicitly ended, OR session missing AND task was dispatched >2 min ago
+    const dispatchedAt = new Date(task.updated_at as string).getTime();
+    const elapsed = Date.now() - dispatchedAt;
+    const minRunTime = 2 * 60 * 1000; // 2 minutes minimum before we consider "missing = done"
+
+    const shouldComplete = isEnded || (!session && elapsed > minRunTime);
+
+    if (shouldComplete) {
       try {
         const history = await getSessionHistory(sessionKey, 5);
+        
+        // Double check: if we got history, look for signs the agent is still working
+        // If history is empty or very short and session is missing, it might still be starting
+        if (!session && history.length < 2 && elapsed < 5 * 60 * 1000) {
+          continue; // Probably still starting up, skip
+        }
+
         const lastAssistant = [...history].reverse().find(m => m.role === 'assistant');
         const output = lastAssistant?.content?.slice(0, 5000) || 'Task completed (no output captured)';
 

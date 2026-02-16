@@ -22,9 +22,23 @@ async function invoke(tool: string, args: Record<string, unknown>): Promise<unkn
     throw new Error(`OpenClaw Gateway error ${res.status}: ${text}`);
   }
 
-  const data: InvokeResult = await res.json();
+  const data = await res.json();
   if (data.error) throw new Error(data.error);
-  return data.result ?? data;
+  
+  // tools/invoke returns { ok, result } where result may have { content, details }
+  const result = data.result ?? data;
+  // If result has a details object (e.g. sessions_spawn), prefer that
+  if (result && typeof result === 'object' && 'details' in result) {
+    return (result as Record<string, unknown>).details;
+  }
+  // If result has content array with text, try parsing it
+  if (result && typeof result === 'object' && 'content' in result) {
+    const content = (result as Record<string, unknown>).content;
+    if (Array.isArray(content) && content[0]?.text) {
+      try { return JSON.parse(content[0].text); } catch { /* fall through */ }
+    }
+  }
+  return result;
 }
 
 export interface SpawnResult {
