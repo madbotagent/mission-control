@@ -14,6 +14,7 @@ import AgentConfigPanel from "@/components/dashboard/AgentConfigPanel"
 import CommandPalette from "@/components/dashboard/CommandPalette"
 import { mockAgents, mockTasks, mockCommMessages, mockHITLItems, mockActivity, mockMetrics } from "@/lib/mock-data"
 import { Search } from "lucide-react"
+import ThemeToggle from "@/components/ThemeToggle"
 
 export default function Home() {
   const [activeView, setActiveView] = useState("overview")
@@ -51,6 +52,7 @@ export default function Home() {
               Search
               <kbd className="text-[10px] border border-border rounded px-1 ml-2">⌘K</kbd>
             </button>
+            <ThemeToggle />
             <div className="w-2 h-2 rounded-full bg-success animate-pulse-dot" />
             <span className="text-xs text-muted-foreground">Gateway Connected</span>
           </div>

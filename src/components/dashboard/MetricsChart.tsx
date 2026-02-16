@@ -3,8 +3,17 @@
 import { MetricsData } from "@/lib/types"
 import { BarChart3 } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts"
+import { useTheme } from "@/components/ThemeProvider"
+
+const chartColors = {
+  light: { grid: "#e2e8f0", tick: "#64748b", tooltipBg: "#ffffff", tooltipBorder: "#e2e8f0", label: "#09090b", item: "#64748b" },
+  dark: { grid: "#27272a", tick: "#a1a1aa", tooltipBg: "#18181b", tooltipBorder: "#27272a", label: "#fafafa", item: "#a1a1aa" },
+}
 
 export default function MetricsChart({ data }: { data: MetricsData[] }) {
+  const { theme } = useTheme()
+  const c = chartColors[theme]
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-4">
@@ -30,13 +39,13 @@ export default function MetricsChart({ data }: { data: MetricsData[] }) {
           </h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: c.tick }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: c.tick }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
               <Tooltip
-                contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: "6px", fontSize: 12 }}
-                labelStyle={{ color: "#fafafa" }}
-                itemStyle={{ color: "#a1a1aa" }}
+                contentStyle={{ background: c.tooltipBg, border: `1px solid ${c.tooltipBorder}`, borderRadius: "6px", fontSize: 12 }}
+                labelStyle={{ color: c.label }}
+                itemStyle={{ color: c.item }}
               />
               <Bar dataKey="tokens" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -49,13 +58,13 @@ export default function MetricsChart({ data }: { data: MetricsData[] }) {
           </h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={c.grid} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: c.tick }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: c.tick }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: "6px", fontSize: 12 }}
-                labelStyle={{ color: "#fafafa" }}
-                itemStyle={{ color: "#a1a1aa" }}
+                contentStyle={{ background: c.tooltipBg, border: `1px solid ${c.tooltipBorder}`, borderRadius: "6px", fontSize: 12 }}
+                labelStyle={{ color: c.label }}
+                itemStyle={{ color: c.item }}
               />
               <Line type="monotone" dataKey="tasks" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", r: 3 }} />
               <Line type="monotone" dataKey="avgTime" stroke="#eab308" strokeWidth={2} dot={{ fill: "#eab308", r: 3 }} />
