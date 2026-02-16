@@ -17,7 +17,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const body = await request.json().catch(() => ({})) as Record<string, string>;
   const agentId = body.agentId || (task.assigned_agent as string) || 'coder';
 
-  const taskDescription = `Task: ${task.title}\n\n${task.description || 'No additional details.'}`;
+  const taskDescription = `You are working on a task for the Mission Control dashboard.
+
+Task: ${task.title}
+
+Details:
+${task.description || 'No additional details.'}
+
+The user will chat with you to provide more details and iterate. Ask clarifying questions if needed. When you make changes to code, tell the user what you did.`;
 
   try {
     const result = await spawnAgent({

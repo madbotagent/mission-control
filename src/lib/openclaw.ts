@@ -109,6 +109,20 @@ export interface AgentInfo {
   [key: string]: unknown;
 }
 
+export async function sendMessage(sessionKey: string, message: string): Promise<string> {
+  const result = await invoke('sessions_send', { sessionKey, message });
+  // Result could be a string, or { content: [...] }, or { reply: "..." }
+  if (typeof result === 'string') return result;
+  const obj = result as Record<string, unknown>;
+  if (typeof obj.reply === 'string') return obj.reply;
+  if (typeof obj.text === 'string') return obj.text;
+  if (Array.isArray(obj.content)) {
+    const texts = obj.content.map((c: Record<string, unknown>) => c.text || '').filter(Boolean);
+    if (texts.length) return texts.join('\n');
+  }
+  return JSON.stringify(result);
+}
+
 export async function listAgents(): Promise<AgentInfo[]> {
   const result = await invoke('agents_list', {});
   if (Array.isArray(result)) return result as AgentInfo[];

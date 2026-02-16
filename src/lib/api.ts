@@ -28,6 +28,7 @@ export interface DBTask {
   output: string | null
   run_id: string | null
   session_key: string | null
+  agent_done: number
 }
 
 export interface DBActivity {
@@ -69,6 +70,10 @@ export const api = {
       request<{ synced: number; updated: string[] }>('/tasks/sync', { method: 'POST' }),
     session: (id: string) =>
       request<{ sessionKey: string; messages: Array<{ role: string; content: string; timestamp?: string }> }>(`/tasks/${id}/session`),
+    chatHistory: (id: string) =>
+      request<{ messages: Array<{ role: string; content: string; timestamp?: string }> }>(`/tasks/${id}/chat`),
+    chatSend: (id: string, message: string) =>
+      request<{ reply: string }>(`/tasks/${id}/chat`, { method: 'POST', body: JSON.stringify({ message }) }),
   },
   agents: {
     list: () => request<Array<Record<string, unknown>>>('/agents'),

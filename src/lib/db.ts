@@ -61,13 +61,10 @@ export function getDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_hitl_status ON hitl_requests(status);
   `);
 
-  // Migrate existing DBs: add run_id and session_key if missing
-  try {
-    _db.exec(`ALTER TABLE tasks ADD COLUMN run_id TEXT`);
-  } catch { /* column already exists */ }
-  try {
-    _db.exec(`ALTER TABLE tasks ADD COLUMN session_key TEXT`);
-  } catch { /* column already exists */ }
+  // Migrate existing DBs: add columns if missing
+  try { _db.exec(`ALTER TABLE tasks ADD COLUMN run_id TEXT`); } catch { /* exists */ }
+  try { _db.exec(`ALTER TABLE tasks ADD COLUMN session_key TEXT`); } catch { /* exists */ }
+  try { _db.exec(`ALTER TABLE tasks ADD COLUMN agent_done INTEGER DEFAULT 0`); } catch { /* exists */ }
 
   return _db;
 }
