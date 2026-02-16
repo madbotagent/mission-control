@@ -7,17 +7,17 @@ import { cn } from "@/lib/utils"
 import { Clock, GripVertical, Plus, X, Trash2, Save, Loader2 } from "lucide-react"
 
 const columns: { id: TaskColumn; label: string; color: string }[] = [
-  { id: "backlog", label: "Backlog", color: "text-zinc-400" },
-  { id: "in-progress", label: "In Progress", color: "text-blue-400" },
-  { id: "pending-approval", label: "Pending Approval", color: "text-yellow-400" },
-  { id: "done", label: "Done", color: "text-green-400" },
+  { id: "backlog", label: "Backlog", color: "text-muted-foreground" },
+  { id: "in-progress", label: "In Progress", color: "text-[#083b9e] dark:text-[#2d6de0]" },
+  { id: "pending-approval", label: "Pending Approval", color: "text-[#512feb] dark:text-[#7c5af6]" },
+  { id: "done", label: "Done", color: "text-[#22a84d] dark:text-[#67FF01]" },
 ]
 
 const priorityConfig: Record<TaskPriority, { label: string; class: string }> = {
-  low: { label: "Low", class: "bg-zinc-700 text-zinc-300" },
-  medium: { label: "Med", class: "bg-blue-900/50 text-blue-300" },
-  high: { label: "High", class: "bg-orange-900/50 text-orange-300" },
-  urgent: { label: "Urgent", class: "bg-red-900/50 text-red-300" },
+  low: { label: "Low", class: "bg-[#786565]/20 text-[#786565]" },
+  medium: { label: "Med", class: "bg-[#083b9e]/15 text-[#083b9e] dark:bg-[#2d6de0]/20 dark:text-[#5b9bff]" },
+  high: { label: "High", class: "bg-[#512feb]/15 text-[#512feb] dark:bg-[#7c5af6]/20 dark:text-[#a78bfa]" },
+  urgent: { label: "Urgent", class: "bg-[#f86a07]/15 text-[#f86a07]" },
 }
 
 function formatRelative(iso: string) {

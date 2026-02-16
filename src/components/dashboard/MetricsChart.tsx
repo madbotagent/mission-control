@@ -47,7 +47,7 @@ export default function MetricsChart({ data }: { data: MetricsData[] }) {
                 labelStyle={{ color: c.label }}
                 itemStyle={{ color: c.item }}
               />
-              <Bar dataKey="tokens" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="tokens" fill="#083b9e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -66,8 +66,8 @@ export default function MetricsChart({ data }: { data: MetricsData[] }) {
                 labelStyle={{ color: c.label }}
                 itemStyle={{ color: c.item }}
               />
-              <Line type="monotone" dataKey="tasks" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", r: 3 }} />
-              <Line type="monotone" dataKey="avgTime" stroke="#eab308" strokeWidth={2} dot={{ fill: "#eab308", r: 3 }} />
+              <Line type="monotone" dataKey="tasks" stroke="#512feb" strokeWidth={2} dot={{ fill: "#512feb", r: 3 }} />
+              <Line type="monotone" dataKey="avgTime" stroke="#f86a07" strokeWidth={2} dot={{ fill: "#f86a07", r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

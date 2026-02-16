@@ -8,10 +8,10 @@ import { ShieldCheck, Check, X, Pencil, AlertTriangle, Loader2 } from "lucide-re
 
 const priorityOrder: Record<TaskPriority, number> = { urgent: 0, high: 1, medium: 2, low: 3 }
 const priorityStyle: Record<string, string> = {
-  urgent: "border-l-red-500",
-  high: "border-l-orange-500",
-  medium: "border-l-blue-500",
-  low: "border-l-zinc-500",
+  urgent: "border-l-[#f86a07]",
+  high: "border-l-[#512feb]",
+  medium: "border-l-[#083b9e]",
+  low: "border-l-[#786565]",
 }
 
 function formatRelative(iso: string) {
@@ -85,7 +85,7 @@ export default function HITLPanel() {
                   <div className="text-xs text-muted-foreground">{formatRelative(item.created_at)}</div>
                 </div>
                 {item.priority === "urgent" && (
-                  <span className="flex items-center gap-1 text-[10px] text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">
+                  <span className="flex items-center gap-1 text-[10px] text-[#f86a07] bg-[#f86a07]/10 px-1.5 py-0.5 rounded">
                     <AlertTriangle className="w-3 h-3" /> Urgent
                   </span>
                 )}

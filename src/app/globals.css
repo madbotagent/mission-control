@@ -2,47 +2,51 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #09090b;
-  --card: #f9fafb;
-  --card-foreground: #09090b;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --accent: #f1f5f9;
-  --accent-foreground: #09090b;
-  --primary: #7c3aed;
+  --foreground: #000000;
+  --card: #f7f7f8;
+  --card-foreground: #000000;
+  --muted: #f0eded;
+  --muted-foreground: #786565;
+  --border: #e0d8d8;
+  --accent: #eee8f5;
+  --accent-foreground: #083b9e;
+  --primary: #083b9e;
   --primary-foreground: #ffffff;
-  --destructive: #ef4444;
-  --success: #22c55e;
-  --warning: #eab308;
-  --ring: #7c3aed;
+  --secondary: #512feb;
+  --secondary-foreground: #ffffff;
+  --destructive: #f86a07;
+  --success: #22a84d;
+  --warning: #f86a07;
+  --ring: #083b9e;
   --radius: 0.5rem;
-  --chart-grid: #e2e8f0;
+  --chart-grid: #e0d8d8;
   --chart-tooltip-bg: #ffffff;
-  --chart-tooltip-border: #e2e8f0;
-  --chart-tick: #64748b;
+  --chart-tooltip-border: #e0d8d8;
+  --chart-tick: #786565;
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #18181b;
-  --card-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --border: #27272a;
-  --accent: #3f3f46;
-  --accent-foreground: #fafafa;
-  --primary: #8b5cf6;
-  --primary-foreground: #fafafa;
-  --destructive: #ef4444;
-  --success: #22c55e;
-  --warning: #eab308;
-  --ring: #8b5cf6;
-  --chart-grid: #27272a;
-  --chart-tooltip-bg: #18181b;
-  --chart-tooltip-border: #27272a;
-  --chart-tick: #a1a1aa;
+  --background: #0d0d0d;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --muted: #313131;
+  --muted-foreground: #a09090;
+  --border: #3a3a3a;
+  --accent: #2a2040;
+  --accent-foreground: #c4b5fd;
+  --primary: #2d6de0;
+  --primary-foreground: #ffffff;
+  --secondary: #7c5af6;
+  --secondary-foreground: #ffffff;
+  --destructive: #f86a07;
+  --success: #67FF01;
+  --warning: #f86a07;
+  --ring: #2d6de0;
+  --chart-grid: #3a3a3a;
+  --chart-tooltip-bg: #1a1a1a;
+  --chart-tooltip-border: #3a3a3a;
+  --chart-tick: #a09090;
 }
 
 @theme inline {
@@ -57,6 +61,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
