@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { Task, TaskColumn, TaskPriority } from "@/lib/types"
-import { cn, formatRelativeTime } from "@/lib/utils"
-import { Clock, GripVertical, Plus, X, ChevronDown, ChevronUp } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { TaskColumn, TaskPriority } from "@/lib/types"
+import { api, DBTask } from "@/lib/api"
+import { cn } from "@/lib/utils"
+import { Clock, GripVertical, Plus, X, Trash2, Save, Loader2 } from "lucide-react"
 
 const columns: { id: TaskColumn; label: string; color: string }[] = [
   { id: "backlog", label: "Backlog", color: "text-zinc-400" },
@@ -19,8 +20,21 @@ const priorityConfig: Record<TaskPriority, { label: string; class: string }> = {
   urgent: { label: "Urgent", class: "bg-red-900/50 text-red-300" },
 }
 
-function TaskCard({ task, onExpand }: { task: Task; onExpand: (task: Task) => void }) {
+function formatRelative(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  const h = Math.floor(diff / 3600000)
+  const d = Math.floor(diff / 86400000)
+  if (m < 1) return "just now"
+  if (m < 60) return `${m}m ago`
+  if (h < 24) return `${h}h ago`
+  return `${d}d ago`
+}
+
+function TaskCard({ task, onExpand, onMove }: { task: DBTask; onExpand: (t: DBTask) => void; onMove: (id: string, status: string) => void }) {
   const priority = priorityConfig[task.priority]
+  const colIdx = columns.findIndex(c => c.id === task.status)
+
   return (
     <div
       onClick={() => onExpand(task)}
@@ -31,62 +45,187 @@ function TaskCard({ task, onExpand }: { task: Task; onExpand: (task: Task) => vo
         <GripVertical className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", priority.class)}>
-          {priority.label}
-        </span>
-        {task.assignedAgent && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-            {task.assignedAgent}
-          </span>
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", priority.class)}>{priority.label}</span>
+        {task.assigned_agent && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{task.assigned_agent}</span>
         )}
       </div>
-      {task.progress > 0 && task.progress < 100 && (
-        <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary rounded-full" style={{ width: `${task.progress}%` }} />
-        </div>
-      )}
-      <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground">
+      {/* Move buttons */}
+      <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {colIdx > 0 && (
+          <button
+            onClick={e => { e.stopPropagation(); onMove(task.id, columns[colIdx - 1].id) }}
+            className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground hover:bg-accent"
+          >← {columns[colIdx - 1].label}</button>
+        )}
+        {colIdx < columns.length - 1 && (
+          <button
+            onClick={e => { e.stopPropagation(); onMove(task.id, columns[colIdx + 1].id) }}
+            className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground hover:bg-accent"
+          >{columns[colIdx + 1].label} →</button>
+        )}
+      </div>
+      <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
         <Clock className="w-3 h-3" />
-        {formatRelativeTime(task.updatedAt)}
+        {formatRelative(task.updated_at)}
       </div>
     </div>
   )
 }
 
-function TaskDetail({ task, onClose }: { task: Task; onClose: () => void }) {
+function AddTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: (t: DBTask) => void }) {
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [priority, setPriority] = useState<TaskPriority>("medium")
+  const [agent, setAgent] = useState("")
+  const [tags, setTags] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const submit = async () => {
+    if (!title.trim()) return
+    setSaving(true)
+    try {
+      const task = await api.tasks.create({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        priority,
+        assigned_agent: agent.trim() || undefined,
+        tags: tags.trim() ? tags.split(",").map(t => t.trim()) : undefined,
+      })
+      onCreated(task)
+      onClose()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-lg w-full max-w-md animate-slide-in" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h3 className="font-semibold">New Task</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Title *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Task title..." />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full mt-1 px-3 py-2 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary resize-none" placeholder="Details..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Priority</label>
+              <select value={priority} onChange={e => setPriority(e.target.value as TaskPriority)} className="w-full mt-1 px-3 py-2 text-sm bg-muted border border-border rounded-md">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Assign Agent</label>
+              <input value={agent} onChange={e => setAgent(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary" placeholder="e.g. coder" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Tags (comma separated)</label>
+            <input value={tags} onChange={e => setTags(e.target.value)} className="w-full mt-1 px-3 py-2 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary" placeholder="frontend, bug-fix" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 p-4 border-t border-border">
+          <button onClick={onClose} className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">Cancel</button>
+          <button onClick={submit} disabled={!title.trim() || saving} className="flex items-center gap-1 px-4 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50">
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+            Create Task
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TaskDetail({ task, onClose, onUpdate, onDelete }: { task: DBTask; onClose: () => void; onUpdate: (t: DBTask) => void; onDelete: (id: string) => void }) {
   const priority = priorityConfig[task.priority]
+  const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState(task.title)
+  const [description, setDescription] = useState(task.description || "")
+  const [taskPriority, setTaskPriority] = useState(task.priority)
+  const [agent, setAgent] = useState(task.assigned_agent || "")
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const updated = await api.tasks.update(task.id, {
+        title, description, priority: taskPriority, assigned_agent: agent || undefined,
+      })
+      onUpdate(updated)
+      setEditing(false)
+    } catch (e) { console.error(e) }
+    finally { setSaving(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this task?")) return
+    setDeleting(true)
+    try {
+      await api.tasks.delete(task.id)
+      onDelete(task.id)
+      onClose()
+    } catch (e) { console.error(e) }
+    finally { setDeleting(false) }
+  }
+
+  const parsedTags: string[] = (() => { try { return JSON.parse(task.tags || '[]') } catch { return [] } })()
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-card border border-border rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto animate-slide-in" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="font-semibold">{task.title}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          {editing ? (
+            <input value={title} onChange={e => setTitle(e.target.value)} className="font-semibold bg-muted border border-border rounded px-2 py-1 flex-1 mr-2 text-sm" />
+          ) : (
+            <h3 className="font-semibold">{task.title}</h3>
+          )}
+          <div className="flex items-center gap-1">
+            {!editing && (
+              <button onClick={() => setEditing(true)} className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground">Edit</button>
+            )}
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+          </div>
         </div>
         <div className="p-4 space-y-4">
-          <div className="flex gap-2">
-            <span className={cn("text-xs px-2 py-0.5 rounded", priority.class)}>{priority.label}</span>
-            <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{task.column}</span>
-            {task.assignedAgent && <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{task.assignedAgent}</span>}
+          <div className="flex gap-2 flex-wrap">
+            {editing ? (
+              <select value={taskPriority} onChange={e => setTaskPriority(e.target.value as TaskPriority)} className="text-xs px-2 py-1 bg-muted border border-border rounded">
+                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
+              </select>
+            ) : (
+              <span className={cn("text-xs px-2 py-0.5 rounded", priority.class)}>{priority.label}</span>
+            )}
+            <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{task.status}</span>
+            {editing ? (
+              <input value={agent} onChange={e => setAgent(e.target.value)} placeholder="Agent" className="text-xs px-2 py-1 bg-muted border border-border rounded w-24" />
+            ) : task.assigned_agent ? (
+              <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{task.assigned_agent}</span>
+            ) : null}
           </div>
-          <p className="text-sm text-muted-foreground">{task.description}</p>
-          {task.progress > 0 && (
-            <div>
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Progress</span><span>{task.progress}%</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${task.progress}%` }} />
-              </div>
-            </div>
+          {editing ? (
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full px-3 py-2 text-sm bg-muted border border-border rounded-md resize-none" />
+          ) : (
+            <p className="text-sm text-muted-foreground">{task.description || "No description"}</p>
           )}
-          {task.logs.length > 0 && (
-            <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">Activity Log</h4>
-              <div className="space-y-1 bg-muted/30 rounded p-2">
-                {task.logs.map((log, i) => (
-                  <div key={i} className="text-xs font-mono text-muted-foreground">→ {log}</div>
-                ))}
-              </div>
+          {parsedTags.length > 0 && (
+            <div className="flex gap-1 flex-wrap">
+              {parsedTags.map((tag, i) => (
+                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{tag}</span>
+              ))}
             </div>
           )}
           {task.output && (
@@ -95,45 +234,105 @@ function TaskDetail({ task, onClose }: { task: Task; onClose: () => void }) {
               <pre className="text-xs font-mono bg-muted/30 rounded p-3 overflow-x-auto whitespace-pre-wrap">{task.output}</pre>
             </div>
           )}
+          {editing && (
+            <div className="flex gap-2">
+              <button onClick={save} disabled={saving} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50">
+                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
+              </button>
+              <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs text-muted-foreground">Cancel</button>
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t border-border flex justify-between items-center">
+          <span className="text-[10px] text-muted-foreground">Created {formatRelative(task.created_at)}</span>
+          <button onClick={handleDelete} disabled={deleting} className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded">
+            {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
-export default function KanbanBoard({ tasks }: { tasks: Task[] }) {
-  const [expandedTask, setExpandedTask] = useState<Task | null>(null)
+export default function KanbanBoard() {
+  const [tasks, setTasks] = useState<DBTask[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedTask, setExpandedTask] = useState<DBTask | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const data = await api.tasks.list()
+      setTasks(data)
+    } catch (e) {
+      console.error('Failed to fetch tasks:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchTasks() }, [fetchTasks])
+
+  const handleMove = async (id: string, newStatus: string) => {
+    // Optimistic update
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus as DBTask['status'], updated_at: new Date().toISOString() } : t))
+    try {
+      await api.tasks.move(id, newStatus)
+    } catch {
+      fetchTasks() // revert on error
+    }
+  }
+
+  const handleCreated = (task: DBTask) => {
+    setTasks(prev => [...prev, task])
+  }
+
+  const handleUpdate = (updated: DBTask) => {
+    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+    setExpandedTask(updated)
+  }
+
+  const handleDelete = (id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id))
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <>
       <div className="grid grid-cols-4 gap-4 h-full">
         {columns.map(col => {
-          const colTasks = tasks.filter(t => t.column === col.id)
+          const colTasks = tasks.filter(t => t.status === col.id)
           return (
             <div key={col.id} className="flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-3 px-1">
                 <div className="flex items-center gap-2">
                   <h3 className={cn("text-sm font-semibold", col.color)}>{col.label}</h3>
-                  <span className="text-xs text-muted-foreground bg-muted rounded-full w-5 h-5 flex items-center justify-center">
-                    {colTasks.length}
-                  </span>
+                  <span className="text-xs text-muted-foreground bg-muted rounded-full w-5 h-5 flex items-center justify-center">{colTasks.length}</span>
                 </div>
                 {col.id === "backlog" && (
-                  <button className="text-muted-foreground hover:text-foreground">
+                  <button onClick={() => setShowAddModal(true)} className="text-muted-foreground hover:text-foreground">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto pr-1">
                 {colTasks.map(task => (
-                  <TaskCard key={task.id} task={task} onExpand={setExpandedTask} />
+                  <TaskCard key={task.id} task={task} onExpand={setExpandedTask} onMove={handleMove} />
                 ))}
               </div>
             </div>
           )
         })}
       </div>
-      {expandedTask && <TaskDetail task={expandedTask} onClose={() => setExpandedTask(null)} />}
+      {expandedTask && <TaskDetail task={expandedTask} onClose={() => setExpandedTask(null)} onUpdate={handleUpdate} onDelete={handleDelete} />}
+      {showAddModal && <AddTaskModal onClose={() => setShowAddModal(false)} onCreated={handleCreated} />}
     </>
   )
 }

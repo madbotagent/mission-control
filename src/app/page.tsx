@@ -12,7 +12,7 @@ import MetricsChart from "@/components/dashboard/MetricsChart"
 import SessionInspector from "@/components/dashboard/SessionInspector"
 import AgentConfigPanel from "@/components/dashboard/AgentConfigPanel"
 import CommandPalette from "@/components/dashboard/CommandPalette"
-import { mockAgents, mockTasks, mockCommMessages, mockHITLItems, mockActivity, mockMetrics } from "@/lib/mock-data"
+import { mockAgents, mockCommMessages, mockMetrics } from "@/lib/mock-data"
 import { Search } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 
@@ -64,10 +64,10 @@ export default function Home() {
               <AgentStatusCards agents={mockAgents} />
               <div className="grid grid-cols-3 gap-6">
                 <div className="col-span-2">
-                  <KanbanBoard tasks={mockTasks} />
+                  <KanbanBoard />
                 </div>
                 <div className="space-y-4">
-                  <HITLPanel items={mockHITLItems} />
+                  <HITLPanel />
                   <CommFeed messages={mockCommMessages.slice(0, 5)} />
                 </div>
               </div>
@@ -76,7 +76,7 @@ export default function Home() {
 
           {activeView === "kanban" && (
             <div className="h-[calc(100vh-8rem)]">
-              <KanbanBoard tasks={mockTasks} />
+              <KanbanBoard />
             </div>
           )}
 
@@ -87,13 +87,13 @@ export default function Home() {
             </div>
           )}
 
-          {activeView === "hitl" && <HITLPanel items={mockHITLItems} />}
+          {activeView === "hitl" && <HITLPanel />}
 
           {activeView === "comms" && <CommFeed messages={mockCommMessages} />}
 
-          {activeView === "logs" && <OutputLogs tasks={mockTasks} />}
+          {activeView === "logs" && <OutputLogs />}
 
-          {activeView === "activity" && <ActivityTimeline events={mockActivity} />}
+          {activeView === "activity" && <ActivityTimeline />}
 
           {activeView === "metrics" && <MetricsChart data={mockMetrics} />}
 
